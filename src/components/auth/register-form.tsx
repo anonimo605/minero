@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDocs, query, collection, where, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, query, collection, where, writeBatch, Timestamp, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { createTransaction } from '@/services/transactionService';
@@ -67,6 +67,12 @@ export function RegisterForm({ onSwitchRequest, initialReferralCode }: RegisterF
             }
         }
 
+        // Get registration bonus from config
+        const referralsConfigRef = doc(db, 'config', 'referrals');
+        const configSnap = await getDoc(referralsConfigRef);
+        const registrationBonus = configSnap.exists() ? configSnap.data().registrationBonus ?? 5000 : 5000;
+
+
       // Step 2: Create user with email and password
       const email = `${data.phone}@monetario.app`;
       const userCredential = await createUserWithEmailAndPassword(auth, email, data.password);
@@ -75,7 +81,6 @@ export function RegisterForm({ onSwitchRequest, initialReferralCode }: RegisterF
       const newUserDocRef = doc(db, 'users', user.uid);
       
       const batch = writeBatch(db);
-      const registrationBonus = 5000;
 
       // Step 3: Set user document
       batch.set(newUserDocRef, {
