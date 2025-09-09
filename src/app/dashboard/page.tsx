@@ -213,7 +213,7 @@ export default function DashboardPage() {
               {rechargeStep === 'selection' && (
                 <div className="space-y-4">
                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {[30000, 80000, 160000, 320000, 500000, 1000000].map((amount) => (
+                        {[20000, 48000, 100000, 150000, 350000, 500000].map((amount) => (
                              <Button key={amount} variant="outline" className="h-16 text-lg" onClick={() => handleRechargeAmountSelection(amount)}>
                                 ${amount.toLocaleString('es-CO')}
                             </Button>
