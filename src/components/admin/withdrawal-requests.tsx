@@ -41,33 +41,41 @@ const WithdrawalRequests = () => {
         };
         fetchSettings();
 
-        const baseQuery = collection(db, 'withdrawalRequests');
+        const q = query(collection(db, 'withdrawalRequests'));
 
-        const unsubscribePending = onSnapshot(query(baseQuery, where('status', '==', 'pending'), orderBy('requestedAt', 'desc')), (snapshot) => {
-            const requests = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, requestedAt: (doc.data().requestedAt as Timestamp).toDate() } as WithdrawalRequest));
-            setPendingRequests(requests);
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const allRequests = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return { 
+                    ...doc.data(), 
+                    id: doc.id, 
+                    requestedAt: (data.requestedAt as Timestamp).toDate(),
+                    processedAt: data.processedAt ? (data.processedAt as Timestamp).toDate() : undefined
+                } as WithdrawalRequest
+            });
+
+            const pending = allRequests
+                .filter(r => r.status === 'pending')
+                .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+
+            const approved = allRequests
+                .filter(r => r.status === 'approved')
+                .sort((a, b) => (b.processedAt?.getTime() || 0) - (a.processedAt?.getTime() || 0));
+
+            const rejected = allRequests
+                .filter(r => r.status === 'rejected')
+                .sort((a, b) => (b.processedAt?.getTime() || 0) - (a.processedAt?.getTime() || 0));
+
+            setPendingRequests(pending);
+            setApprovedRequests(approved);
+            setRejectedRequests(rejected);
             setLoading(false);
         }, (error) => {
-             console.error("Error fetching pending withdrawals:", error);
-             setLoading(false);
-        });
-        
-        const unsubscribeApproved = onSnapshot(query(baseQuery, where('status', '==', 'approved'), orderBy('processedAt', 'desc')), (snapshot) => {
-             const requests = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, requestedAt: (doc.data().requestedAt as Timestamp).toDate(), processedAt: doc.data().processedAt ? (doc.data().processedAt as Timestamp).toDate() : undefined } as WithdrawalRequest));
-            setApprovedRequests(requests);
-        });
-        
-        const unsubscribeRejected = onSnapshot(query(baseQuery, where('status', '==', 'rejected'), orderBy('processedAt', 'desc')), (snapshot) => {
-            const requests = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, requestedAt: (doc.data().requestedAt as Timestamp).toDate(), processedAt: doc.data().processedAt ? (doc.data().processedAt as Timestamp).toDate() : undefined } as WithdrawalRequest));
-            setRejectedRequests(requests);
+            console.error("Error fetching withdrawals:", error);
+            setLoading(false);
         });
 
-
-        return () => {
-            unsubscribePending();
-            unsubscribeApproved();
-            unsubscribeRejected();
-        };
+        return () => unsubscribe();
     }, [user]);
 
     const handleAction = async (requestId: string, action: 'approve' | 'reject') => {
